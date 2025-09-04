@@ -3,8 +3,8 @@ tags:
   - CSharp
   - IT
 Источник: METANIT
-date: 2025-09-03
-завершена:
+date: 2025-09-04
+завершена: true
 ---
 ## Общая информация
 ---
@@ -120,5 +120,112 @@ var names = from n in list
 ## Выборка элементов из нескольких источников
 ---
 В LINQ можно выбирать объекты из ***нескольких*** источников. 
+Предположим, есть 2 класса:
+```
+ public class Student
+        {
+            public string? Name { get; set; }
+            public Student(string name)
+            {
+                Name = name;
+            }
+        }
+        public class Course
+        {
+            public string? Title { get; set; }
+            public Course(string title)
+            {
+                Title = title;
+            }
+        }
+```
+Мы хотим получить список в виде студент – курс. 
+На языке запросов получим такой код:
+```
+var enrollments = from c in courses
+                  from s in students
+                  select new { Student = s.Name, Course = c.Title };
+```
+Таким образом будет создана коллекция элементов анонимного типа со свойствами `Student` и `Course`, в которых будут храниться значения имени студента (`s.Name`) и названия курса (`c.Title`) соответственно.
+Написать этот же запрос на языке методов у меня пока не получается.
+## SelectMany и сведение объектов
+---
+Метод ***SelectMany*** позволяет свести несколько коллекций в одну коллекцию. 
+Он имеет несколько перегруженных версий:
 
+SelectMany ***`(Func<TSourse, IEnumerable<TResult>> selector)`***
+SelectMany ***`(Func<TSourse, IEnumerable<TCollection>> collectionSelector, Func<TSourse, TCollection, TResult) resultSelector)`***
 
+В первом случае метод принимает функцию преобразования в виде делегата ***`Func<TSource, IEnumerable<TResult>> selector`***. Функция преобразования получает каждый объект типа ***TSource*** и на его основе возвращает коллекцию ***`IEnumerable<TResult>`***. 
+Рассмотрим пример. Имеется такой код:
+
+Описание классов ***Company*** и ***Staff*** выглядит следующим образом:
+```
+public class Company
+        {
+            public string? Name;
+            public List<Staff>? Staff;
+
+            public Company(string name, List<Staff> staff)
+            {
+                Name = name;
+                Staff = staff;
+            }
+        }
+        public class Staff
+        {
+            public string? Name;
+            
+            public Staff(string name)
+            {
+                Name = name;
+            }
+        }
+```
+И имеется такой код:
+```
+var companies = new List<Company>
+            {
+                new Company("Kommunarka", new List<Staff>() { new Staff("Andy"),
+                                                              new Staff("Candy"),
+                                                              new Staff("Sandy")}),
+
+                new Company("Apple", new List<Staff>(){ new Staff("Steve"),
+                                                        new Staff("Jacob"),
+                                                        new Staff("Lewis")})
+
+            };
+
+var staff = companies.SelectMany(s => s.Staff); 
+  
+foreach (var name in staff)
+            {
+                Console.WriteLine($"{name.Name}");
+            }
+```
+В строчке ***`var staff = companies.SelectMany(s => s.Staff);`*** в переменную ***`staff`*** помещается коллекция объектов класса ***`Staff`***, которая в классе ***`Company`*** обозначена свойством  ***`Staff`*** типа ***`List<Staff>?`***. Таким образом, в переменной ***`staff`*** лежит коллекция типа ***`IEnumerable<Staff>`*** и содержит имена сотрудников двух компаний. Затем в цикле ***`foreach`*** мы выводим каждый элемент в консоль.
+Теперь давайте поиграемся и что-нибудь поломаем).
+- Если мы в строчке ***`var staff = companies.SelectMany(s => s.Staff);`*** обратимся не к свойству ***`Staff`***, а  к свойству ***`Name`*** класса ***`Company`***?
+  Свойство ***`Name`*** класса ***`Company`*** имеет тип ***`string`***, который представляет собой набор символов, то есть коллекцию элементов типа ***`char`***. Мы должны получить коллекцию символов, то есть объектов типа ***`char`***. Итоговый код будет отличаться только строчкой: ***`var chars = companies.SelectMany(s => s.Name);`***. По итогу получим вывод каждого символа двух названий в консоли.
+- Если в строчке ***`Console.WriteLine($"{name.Name}");`*** не написать свойство ***`Name`***?
+  Мы уже выяснили, что в переменной ***`staff`*** хранятся объекты типа ***`Staff`***. При передачи такого объекта в консоль получим ***6 выводов полных называний класса `Staff`***. 
+Такой же результат можно получить на языке запросов:
+```
+var staff = from c in companies
+			from s in c.Staff
+			select s;
+```
+
+Теперь добавим к сотрудникам их компании, используя второй перегруженный метод ***`SelectMany(Func<TSourse, IEnumerable<.TCollection>> collectionSelector, Func<TSourse, TCollection, TResult) resultSelector)`***. 
+Код с использованием этого метода выглядит так:
+```
+var namesAndCompany = companies.SelectMany(s => s.Staff, 
+										   (c,s)=> new { s.Name, name = c.Name} );
+```
+Здесь в первой части – ***`s => s.Staff`***, создаётся единая коллекция, в которую передаётся свойство типа ***`List<Staff>`*** объектов класса ***`Company`*** т.е. коллекция объектов класса ***`Staff`***.  Затем, коллекция из первой части попадает ***во вторую часть*** в данном случае это переменная ***`s`***, а ***первый элемент*** имеет такой же тип, как и объект ***`s`*** из первой части. 
+Получилось как-то запутанно, поэтому я перепишу немного эту часть:
+```
+var namesAndCompany = companies.SelectMany(s => s.Staff, 
+										   (s,c)=> new { c.Name, name = s.Name} );
+```
+То есть назвать переменные, которые в примере выше подписаны как ***`s`*** и ***`c`*** можно как угодно, но по смыслу лучше этот вариант. 

@@ -41,7 +41,7 @@ select (final element)
 var sortedPeople = people.Where(p => p.StartsWith('T')).OrderBy(p => p);
 ```
 Список используемых методов Linq:
-- ***`Select(item)`*** – выбираем в итоговую коллекцию элемент ***`item`***
+- ***`Select(item)`*** – выбираем в итоговую коллекцию элемент ***`item`***.
 - ***`Where(boolean expr)`*** – делаем выборку в коллекции по признаку ***`expr`***
 - ***`OrderBy(item)`*** – упорядочиваем по возрастанию по соответствующему элементу ***`item`***
 - ***`OrderByDescending(item)`*** – упорядочиваем по убыванию по соответствующему элементу ***`item`***
